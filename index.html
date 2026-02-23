@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="description"
+    content="AgriTech — Smart Agriculture App for Indian farmers. IoT-powered water management, motor pump control, crop advisory and marketplace. Built on ESP32 + Firebase." />
+  <meta name="keywords"
+    content="smart irrigation, agriculture IoT, farm automation, motor pump control, ESP32 agriculture, Indian farmer app, AgriTech, smart farming India" />
+  <meta name="author" content="AgriTech" />
+  <meta name="theme-color" content="#0a2e0a" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="AgriTech — Smart Agriculture Dashboard" />
+  <meta property="og:description"
+    content="IoT-powered smart farming platform for Indian farmers. Control your motor, valves, and irrigation from anywhere." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="agriculture-png-17.png" />
+
+  <title>AgriTech — Smart Agriculture Dashboard</title>
+  <link rel="icon" href="agriculture-png-17.png" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- 🌱 SPLASH SCREEN                               -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div id="splashScreen" class="splash-screen" aria-hidden="true">
+    <div class="splash-content">
+      <div class="splash-icon-ring">
+        <img src="agriculture-png-17.png" class="splash-logo" alt="AgriTech Logo" />
+      </div>
+      <h1 class="splash-title">AgriTech</h1>
+      <p class="splash-sub">स्मार्ट खेती · Smart Farming</p>
+      <div class="loader-bar">
+        <div class="loader-progress"></div>
+      </div>
+      <p class="splash-ver">v2.0 — IoT Agriculture Platform</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- 🔐 LOGIN SCREEN                                -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <section id="loginSection" class="login-screen" aria-label="Login">
+    <div class="login-bg-art"></div>
+    <div class="login-card">
+      <div class="login-brand">
+        <img src="agriculture-png-17.png" alt="AgriTech" class="login-logo" />
+        <h1 class="login-app-name">AgriTech</h1>
+        <p class="login-tagline">Your Smart Farm in Your Pocket</p>
+      </div>
+      <div class="login-form-group">
+        <div class="input-wrapper">
+          <span class="input-icon">📧</span>
+          <input type="email" id="email" placeholder="Email Address" autocomplete="email" required />
+        </div>
+        <div class="input-wrapper">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
+        </div>
+        <button id="loginBtn" class="btn-primary btn-login" onclick="login()">
+          <span class="btn-text">Sign In to Farm</span>
+          <span class="btn-icon">→</span>
+        </button>
+        <p id="loginStatus" class="error-msg" role="alert"></p>
+      </div>
+      <div class="login-footer">
+        <p>🌾 Trusted by farmers across India</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- 🏠 MAIN APP SHELL                              -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div id="appShell" class="app-shell hidden">
+
+    <!-- TOP HEADER -->
+    <header class="app-header" id="appHeader">
+      <div class="header-left">
+        <img src="agriculture-png-17.png" alt="logo" class="header-logo" />
+        <div>
+          <span class="header-app-name">AgriTech</span>
+          <span class="header-tagline">Smart Farm</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="esp-badge" id="espBadge">
+          <span class="esp-dot" id="espDot"></span>
+          <span id="espLabel">Checking...</span>
+        </div>
+        <button class="icon-btn" onclick="logout()" title="Logout" id="headerLogoutBtn">⏻</button>
+      </div>
+    </header>
+
+    <!-- OFFLINE BANNER -->
+    <div id="offlineAlert" class="offline-banner hidden" role="alert">
+      ⚠️ &nbsp; ESP32 Device is Offline — Check your hardware connection
+    </div>
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- PAGE: DASHBOARD (#dashboard)               -->
+    <!-- ─────────────────────────────────────────── -->
+    <main id="page-dashboard" class="page active" aria-label="Dashboard">
+      <!-- Hero -->
+      <div class="dash-hero">
+        <div class="dash-hero-text">
+          <p class="dash-greeting" id="dashGreeting">Good Morning 🌅</p>
+          <h2 class="dash-heading">Welcome to<br />Your Smart Farm</h2>
+          <p class="dash-sub">Manage your irrigation, crops &amp; marketplace from one place.</p>
+        </div>
+        <div class="dash-hero-icon">🌾</div>
+      </div>
+
+      <!-- Quick Status Strip -->
+      <div class="status-strip">
+        <div class="status-chip" id="motorStatusChip">
+          <span class="chip-icon">⚙️</span>
+          <div>
+            <span class="chip-label">Motor</span>
+            <span class="chip-val" id="dashMotorStatus">OFF</span>
+          </div>
+        </div>
+        <div class="status-chip" id="valve1StatusChip">
+          <span class="chip-icon">🚰</span>
+          <div>
+            <span class="chip-label">Valve 1</span>
+            <span class="chip-val" id="dashValve1Status">OFF</span>
+          </div>
+        </div>
+        <div class="status-chip" id="valve2StatusChip">
+          <span class="chip-icon">🔧</span>
+          <div>
+            <span class="chip-label">Valve 2</span>
+            <span class="chip-val" id="dashValve2Status">OFF</span>
+          </div>
+        </div>
+        <div class="status-chip" id="lightStatusChip">
+          <span class="chip-icon">💡</span>
+          <div>
+            <span class="chip-label">Light</span>
+            <span class="chip-val" id="dashLightStatus">OFF</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module Grid -->
+      <section class="modules-section">
+        <h2 class="section-title">My Farm Modules</h2>
+        <div class="module-grid">
+
+          <!-- ACTIVE MODULE: Water Management -->
+          <div class="module-card active-module" onclick="navigateTo('water')" id="moduleWater" role="button"
+            tabindex="0" aria-label="Open Water Management">
+            <div class="module-card-glow"></div>
+            <div class="module-icon-wrap">
+              <span class="module-icon">🌊</span>
+            </div>
+            <h3 class="module-name">Water Management</h3>
+            <p class="module-desc">Motor, Valves, Timer &amp; Irrigation Control</p>
+            <div class="module-badge active-badge">✅ Active</div>
+            <div class="module-arrow">→</div>
+          </div>
+
+          <!-- FUTURE: Harvest Tools -->
+          <div class="module-card locked-module" id="moduleHarvest" role="button" tabindex="0"
+            aria-label="Harvest Tools - Coming Soon">
+            <div class="module-icon-wrap">
+              <span class="module-icon">🌾</span>
+            </div>
+            <h3 class="module-name">Harvest Tools</h3>
+            <p class="module-desc">Scheduling, yield tracking &amp; post-harvest</p>
+            <div class="module-badge coming-badge">🔜 Phase 2</div>
+          </div>
+
+          <!-- FUTURE: Marketplace -->
+          <div class="module-card locked-module" id="moduleSell" role="button" tabindex="0"
+            aria-label="Crop Marketplace - Coming Soon">
+            <div class="module-icon-wrap">
+              <span class="module-icon">🏪</span>
+            </div>
+            <h3 class="module-name">Crop Marketplace</h3>
+            <p class="module-desc">Sell your produce at best market prices</p>
+            <div class="module-badge coming-badge">🔜 Phase 2</div>
+          </div>
+
+          <!-- FUTURE: Seeds -->
+          <div class="module-card locked-module" id="moduleSeeds" role="button" tabindex="0"
+            aria-label="Seeds Store - Coming Soon">
+            <div class="module-icon-wrap">
+              <span class="module-icon">🌱</span>
+            </div>
+            <h3 class="module-name">Seeds Store</h3>
+            <p class="module-desc">Browse &amp; order certified quality seeds</p>
+            <div class="module-badge coming-badge">🔜 Phase 2</div>
+          </div>
+
+          <!-- FUTURE: Fertilizer -->
+          <div class="module-card locked-module" id="moduleFertilizer" role="button" tabindex="0"
+            aria-label="Fertilizer Store - Coming Soon">
+            <div class="module-icon-wrap">
+              <span class="module-icon">🧴</span>
+            </div>
+            <h3 class="module-name">Fertilizer Store</h3>
+            <p class="module-desc">Organic &amp; chemical fertilizers at farm gate</p>
+            <div class="module-badge coming-badge">🔜 Phase 2</div>
+          </div>
+
+          <!-- FUTURE: Crop Advisory -->
+          <div class="module-card locked-module" id="moduleAdvisory" role="button" tabindex="0"
+            aria-label="Crop Advisory - Coming Soon">
+            <div class="module-icon-wrap">
+              <span class="module-icon">🤖</span>
+            </div>
+            <h3 class="module-name">AI Crop Advisory</h3>
+            <p class="module-desc">Disease detection, weather alerts &amp; AI insights</p>
+            <div class="module-badge future-badge">🔮 Phase 3</div>
+          </div>
+
+          <!-- FUTURE: Machinery -->
+          <div class="module-card locked-module" id="moduleMachinery" role="button" tabindex="0"
+            aria-label="Machinery Booking - Coming Soon">
+            <div class="module-icon-wrap">
+              <span class="module-icon">🚜</span>
+            </div>
+            <h3 class="module-name">Machinery Booking</h3>
+            <p class="module-desc">Rent tractors, tillers &amp; farm equipment</p>
+            <div class="module-badge future-badge">🚀 Phase 4</div>
+          </div>
+
+          <!-- FUTURE: Service Support -->
+          <div class="module-card locked-module" id="moduleService" role="button" tabindex="0"
+            aria-label="Service Support - Coming Soon">
+            <div class="module-icon-wrap">
+              <span class="module-icon">🔌</span>
+            </div>
+            <h3 class="module-name">Service Support</h3>
+            <p class="module-desc">Electrician, plumber &amp; technician on demand</p>
+            <div class="module-badge future-badge">🚀 Phase 4</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Roadmap Section -->
+      <section class="roadmap-section">
+        <h2 class="section-title">Development Roadmap</h2>
+        <div class="roadmap-timeline">
+
+          <div class="roadmap-item current">
+            <div class="roadmap-dot"></div>
+            <div class="roadmap-line"></div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">Phase 1 — Now ✅</div>
+              <h3 class="roadmap-title">Core Water Control</h3>
+              <p class="roadmap-desc">Motor pump control, valve management, timer-based irrigation, light control &amp;
+                live ESP32 status monitoring via Firebase.</p>
+              <div class="roadmap-tags">
+                <span class="tag">IoT Control</span>
+                <span class="tag">Firebase</span>
+                <span class="tag">ESP32</span>
+                <span class="tag">Real-Time</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="roadmap-item upcoming">
+            <div class="roadmap-dot"></div>
+            <div class="roadmap-line"></div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">Phase 2 — Q2 2025 🔜</div>
+              <h3 class="roadmap-title">Marketplace Ecosystem</h3>
+              <p class="roadmap-desc">Sell crops, buy seeds &amp; fertilizers, harvest scheduling tools and farm input
+                e-commerce with doorstep delivery.</p>
+              <div class="roadmap-tags">
+                <span class="tag">Marketplace</span>
+                <span class="tag">E-Commerce</span>
+                <span class="tag">Payments</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="roadmap-item future">
+            <div class="roadmap-dot"></div>
+            <div class="roadmap-line"></div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">Phase 3 — Q3 2025 🔮</div>
+              <h3 class="roadmap-title">AI Crop Advisory</h3>
+              <p class="roadmap-desc">AI-powered disease detection from photos, real-time weather alerts, soil health
+                analysis and personalised crop recommendations.</p>
+              <div class="roadmap-tags">
+                <span class="tag">AI / ML</span>
+                <span class="tag">Weather API</span>
+                <span class="tag">Advisory</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="roadmap-item future">
+            <div class="roadmap-dot"></div>
+            <div class="roadmap-content">
+              <div class="roadmap-phase">Phase 4 — Q4 2025 🚀</div>
+              <h3 class="roadmap-title">Service Ecosystem</h3>
+              <p class="roadmap-desc">On-demand machinery rental, electrician &amp; plumber booking, government scheme
+                integration and farmer community network.</p>
+              <div class="roadmap-tags">
+                <span class="tag">Services</span>
+                <span class="tag">Booking</span>
+                <span class="tag">Community</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Architecture Info -->
+      <section class="arch-section">
+        <h2 class="section-title">App Architecture</h2>
+        <div class="arch-grid">
+          <div class="arch-card">
+            <span class="arch-icon">📱</span>
+            <h4>Mobile-First SPA</h4>
+            <p>Progressive Web App with offline support, bottom navigation and touch-optimised controls</p>
+          </div>
+          <div class="arch-card">
+            <span class="arch-icon">🔥</span>
+            <h4>Firebase Backend</h4>
+            <p>Realtime Database for IoT sync, Firebase Auth for secure login, Cloud Functions for automation</p>
+          </div>
+          <div class="arch-card">
+            <span class="arch-icon">🔌</span>
+            <h4>ESP32 IoT Core</h4>
+            <p>WiFi-enabled microcontroller pushing relay states and sensor readings to Firebase in real-time</p>
+          </div>
+          <div class="arch-card">
+            <span class="arch-icon">🧩</span>
+            <h4>Modular Design</h4>
+            <p>Each feature is an independent module — add new capabilities without touching existing code</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="page-bottom-pad"></div>
+    </main>
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- PAGE: WATER MANAGEMENT (#water)            -->
+    <!-- ─────────────────────────────────────────── -->
+    <main id="page-water" class="page" aria-label="Water Management">
+      <div class="page-hero water-hero">
+        <div>
+          <button class="back-btn" onclick="navigateTo('dashboard')">← Back</button>
+          <h2 class="page-hero-title">🌊 Water Management</h2>
+          <p class="page-hero-sub">Control your irrigation system remotely</p>
+        </div>
+        <div class="water-hero-icon">💧</div>
+      </div>
+
+      <!-- ESP Status Banner inside Water Page -->
+      <div class="device-status-bar" id="waterDeviceStatus">
+        <div class="device-status-dot" id="waterStatusDot"></div>
+        <span id="waterStatusLabel">ESP32 — Checking connection…</span>
+        <span id="timerStatus" class="timer-chip">⏱ Timer: --</span>
+      </div>
+
+      <!-- Motor Control — PRIMARY -->
+      <section class="control-section">
+        <h3 class="control-section-title">⚙️ Motor Pump</h3>
+        <div class="big-control-card motor-card" id="motorCard">
+          <div class="big-control-info">
+            <div class="big-control-icon">⚙️</div>
+            <div>
+              <h3 class="big-control-name">Motor Pump</h3>
+              <p class="big-control-desc">Main water pump — controls all irrigation</p>
+            </div>
+          </div>
+          <div class="big-control-actions">
+            <div class="power-status-row">
+              <span class="power-label">Status:</span>
+              <span class="power-badge" id="status1">OFF</span>
+            </div>
+            <label class="big-toggle" for="relay1Switch" aria-label="Motor toggle">
+              <input type="checkbox" id="relay1Switch" />
+              <span class="big-slider">
+                <span class="toggle-off-label">OFF</span>
+                <span class="toggle-on-label">ON</span>
+              </span>
+            </label>
+            <button class="btn-timer" onclick="openTimerModal()" id="timerOpenBtn">
+              ⏱ Set Timer
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Valve & Light Controls -->
+      <section class="control-section">
+        <h3 class="control-section-title">🔧 Valves &amp; Lights</h3>
+        <div class="control-grid">
+
+          <!-- Valve 1 -->
+          <div class="control-card-item" id="valve1Card">
+            <div class="ctrl-icon-wrap">🚰</div>
+            <h4 class="ctrl-name">Valve 1</h4>
+            <p class="ctrl-sub">Field Zone A</p>
+            <span class="ctrl-status-badge" id="status3">OFF</span>
+            <label class="std-toggle" for="relay3Switch" aria-label="Valve 1 toggle">
+              <input type="checkbox" id="relay3Switch" />
+              <span class="std-slider"></span>
+            </label>
+          </div>
+
+          <!-- Valve 2 -->
+          <div class="control-card-item" id="valve2Card">
+            <div class="ctrl-icon-wrap">🔧</div>
+            <h4 class="ctrl-name">Valve 2</h4>
+            <p class="ctrl-sub">Field Zone B</p>
+            <span class="ctrl-status-badge" id="status4">OFF</span>
+            <label class="std-toggle" for="relay4Switch" aria-label="Valve 2 toggle">
+              <input type="checkbox" id="relay4Switch" />
+              <span class="std-slider"></span>
+            </label>
+          </div>
+
+          <!-- Light -->
+          <div class="control-card-item" id="lightCard">
+            <div class="ctrl-icon-wrap">💡</div>
+            <h4 class="ctrl-name">Field Light</h4>
+            <p class="ctrl-sub">Night Visibility</p>
+            <span class="ctrl-status-badge" id="status2">OFF</span>
+            <label class="std-toggle" for="relay2Switch" aria-label="Light toggle">
+              <input type="checkbox" id="relay2Switch" />
+              <span class="std-slider"></span>
+            </label>
+          </div>
+
+          <!-- Smart Irrigation Placeholder -->
+          <div class="control-card-item locked-ctrl" id="smartIrrigCard">
+            <div class="ctrl-icon-wrap">🤖</div>
+            <h4 class="ctrl-name">Smart Irrigation</h4>
+            <p class="ctrl-sub">AI Auto Scheduling</p>
+            <span class="ctrl-status-badge coming">Soon</span>
+            <div class="coming-soon-chip">Phase 3</div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- System Status Panel -->
+      <section class="control-section">
+        <h3 class="control-section-title">📊 System Status</h3>
+        <div class="status-panel">
+          <div class="status-row">
+            <span class="status-row-label">🔌 ESP32 Device</span>
+            <span class="status-row-val green" id="espStatusVal">Checking…</span>
+          </div>
+          <div class="status-row">
+            <span class="status-row-label">⚙️ Motor Pump</span>
+            <span class="status-row-val" id="motorStatusVal">OFF</span>
+          </div>
+          <div class="status-row">
+            <span class="status-row-label">🚰 Valve 1</span>
+            <span class="status-row-val" id="valve1StatusVal">OFF</span>
+          </div>
+          <div class="status-row">
+            <span class="status-row-label">🔧 Valve 2</span>
+            <span class="status-row-val" id="valve2StatusVal">OFF</span>
+          </div>
+          <div class="status-row">
+            <span class="status-row-label">💡 Field Light</span>
+            <span class="status-row-val" id="lightStatusVal">OFF</span>
+          </div>
+          <div class="status-row">
+            <span class="status-row-label">⏱ Motor Timer</span>
+            <span class="status-row-val cyan" id="timerStatusVal">--</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="page-bottom-pad"></div>
+    </main>
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- PAGE: MARKET (#market)                     -->
+    <!-- ─────────────────────────────────────────── -->
+    <main id="page-market" class="page" aria-label="Marketplace">
+      <div class="page-hero market-hero">
+        <div>
+          <h2 class="page-hero-title">🏪 Marketplace</h2>
+          <p class="page-hero-sub">Buy inputs · Sell your produce</p>
+        </div>
+        <div class="water-hero-icon">🛒</div>
+      </div>
+      <div class="coming-soon-page">
+        <div class="cs-icon">🔜</div>
+        <h2 class="cs-title">Coming in Phase 2</h2>
+        <p class="cs-desc">The AgriTech marketplace will let you sell your harvest at best prices, buy certified seeds,
+          fertilizers and much more — all at your doorstep.</p>
+        <div class="cs-features">
+          <div class="cs-feat"><span>🌾</span> Sell Crop Produce</div>
+          <div class="cs-feat"><span>🌱</span> Buy Quality Seeds</div>
+          <div class="cs-feat"><span>🧴</span> Order Fertilizers</div>
+          <div class="cs-feat"><span>🚚</span> Doorstep Delivery</div>
+        </div>
+        <p class="cs-eta">Expected: Q2 2025</p>
+      </div>
+      <div class="page-bottom-pad"></div>
+    </main>
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- PAGE: ADVISORY (#advisory)                 -->
+    <!-- ─────────────────────────────────────────── -->
+    <main id="page-advisory" class="page" aria-label="Crop Advisory">
+      <div class="page-hero advisory-hero">
+        <div>
+          <h2 class="page-hero-title">🤖 Crop Advisory</h2>
+          <p class="page-hero-sub">AI-powered farming intelligence</p>
+        </div>
+        <div class="water-hero-icon">🌿</div>
+      </div>
+      <div class="coming-soon-page">
+        <div class="cs-icon">🔮</div>
+        <h2 class="cs-title">Coming in Phase 3</h2>
+        <p class="cs-desc">Our AI advisory engine will analyse your crop photos, soil data and local weather to give you
+          personalised farm recommendations in your language.</p>
+        <div class="cs-features">
+          <div class="cs-feat"><span>📷</span> Disease Detection</div>
+          <div class="cs-feat"><span>🌦️</span> Weather Alerts</div>
+          <div class="cs-feat"><span>🧑‍🌾</span> Crop Calendar</div>
+          <div class="cs-feat"><span>📊</span> Soil Analysis</div>
+        </div>
+        <p class="cs-eta">Expected: Q3 2025</p>
+      </div>
+      <div class="page-bottom-pad"></div>
+    </main>
+
+    <!-- ─────────────────────────────────────────── -->
+    <!-- PAGE: PROFILE (#profile)                   -->
+    <!-- ─────────────────────────────────────────── -->
+    <main id="page-profile" class="page" aria-label="Profile">
+      <div class="page-hero profile-hero">
+        <div>
+          <h2 class="page-hero-title">👤 My Profile</h2>
+          <p class="page-hero-sub">Account &amp; settings</p>
+        </div>
+        <div class="water-hero-icon">🙍</div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-avatar-card">
+          <div class="avatar-ring">🧑‍🌾</div>
+          <h3 class="profile-name" id="profileEmail">Farmer</h3>
+          <p class="profile-role">AgriTech Member</p>
+        </div>
+        <div class="profile-list">
+          <div class="profile-item">
+            <span class="pi-icon">📱</span>
+            <span class="pi-label">App Version</span>
+            <span class="pi-val">v2.0.0</span>
+          </div>
+          <div class="profile-item">
+            <span class="pi-icon">�</span>
+            <span class="pi-label">Backend</span>
+            <span class="pi-val">Firebase RTDB</span>
+          </div>
+          <div class="profile-item">
+            <span class="pi-icon">�</span>
+            <span class="pi-label">Device</span>
+            <span class="pi-val">ESP32</span>
+          </div>
+          <div class="profile-item">
+            <span class="pi-icon">🌐</span>
+            <span class="pi-label">Platform</span>
+            <span class="pi-val">Web + Mobile PWA</span>
+          </div>
+        </div>
+        <button class="btn-logout" onclick="logout()" id="profileLogoutBtn">
+          ⏻ &nbsp; Logout
+        </button>
+      </div>
+      <div class="page-bottom-pad"></div>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 📌 BOTTOM NAVIGATION BAR                        -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <nav class="bottom-nav" id="bottomNav" aria-label="Main Navigation">
+      <button class="nav-item active" id="nav-dashboard" onclick="navigateTo('dashboard')" aria-label="Home Dashboard">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-item" id="nav-water" onclick="navigateTo('water')" aria-label="Water Management">
+        <span class="nav-icon">🌊</span>
+        <span class="nav-label">Water</span>
+      </button>
+      <button class="nav-item" id="nav-market" onclick="navigateTo('market')" aria-label="Marketplace">
+        <span class="nav-icon">🏪</span>
+        <span class="nav-label">Market</span>
+      </button>
+      <button class="nav-item" id="nav-advisory" onclick="navigateTo('advisory')" aria-label="Crop Advisory">
+        <span class="nav-icon">🌿</span>
+        <span class="nav-label">Advisory</span>
+      </button>
+      <button class="nav-item" id="nav-profile" onclick="navigateTo('profile')" aria-label="Profile">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Profile</span>
+      </button>
+    </nav>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  </div><!-- /appShell -->
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- ⏱ TIMER MODAL                                  -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div id="timerModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Set Motor Timer">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">⏱ Set Motor Timer</h3>
+        <button class="modal-close" onclick="closeTimerModal()">✕</button>
+      </div>
+      <p class="modal-desc">Motor will automatically turn OFF after selected duration</p>
+      <div class="timer-options">
+        <button class="timer-option" onclick="setTimer(15)">15 min</button>
+        <button class="timer-option" onclick="setTimer(30)">30 min</button>
+        <button class="timer-option" onclick="setTimer(60)">1 hour</button>
+        <button class="timer-option" onclick="setTimer(90)">1.5 hr</button>
+        <button class="timer-option" onclick="setTimer(120)">2 hours</button>
+        <button class="timer-option" onclick="setTimer(180)">3 hours</button>
+      </div>
+      <div class="timer-custom">
+        <label class="custom-label">Custom (minutes):</label>
+        <div class="custom-input-row">
+          <input type="number" id="customMinutes" min="1" max="600" placeholder="e.g. 45" class="custom-input" />
+          <button class="btn-primary" onclick="setCustomTimer()">Set</button>
+        </div>
+      </div>
+      <button class="btn-stop-timer" onclick="stopTimer()">⛔ Cancel Timer</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
